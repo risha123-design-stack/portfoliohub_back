@@ -301,6 +301,27 @@ public function nextPackage(
             $extra ?? []
         );
     }
+    public function canAccessNotifications(
+    $user
+): bool {
+    $packageName = strtolower(
+        trim(
+            (string) (
+                $user->package_name
+                ?? 'Silver'
+            )
+        )
+    );
+
+    return in_array(
+        $packageName,
+        [
+            'gold',
+            'platinum',
+        ],
+        true
+    );
+}
 
     public function accessSummary(
         User $user

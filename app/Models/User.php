@@ -353,4 +353,11 @@ public function sendPasswordResetNotification($token): void
             new ResetPasswordNotification($token)
         );
     }
+    
+public function userNotifications(): HasMany
+{
+    return $this->hasMany(
+        UserNotification::class
+    )->latest();
+}
 }

@@ -12,9 +12,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use App\Services\PackageAccessService;
 
 class SettingsController extends Controller
 {
+    public function __construct(
+        private readonly PackageAccessService $packageAccessService
+    ) {
+    }
+    
     public function show(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -60,31 +66,40 @@ class SettingsController extends Controller
                         ),
                 ],
 
-                'notifications' => [
-                    'portfolio_views' =>
-                        $settings
-                            ->portfolio_views_notification,
+'notifications' => [
+    'portfolio_views' =>
+        $settings
+            ->portfolio_views_notification,
 
-                    'resume_downloads' =>
-                        $settings
-                            ->resume_downloads_notification,
+    'resume_downloads' =>
+        $settings
+            ->resume_downloads_notification,
 
-                    'project_clicks' =>
-                        $settings
-                            ->project_clicks_notification,
+    'project_clicks' =>
+        $settings
+            ->project_clicks_notification,
 
-                    'security_alerts' =>
-                        $settings
-                            ->security_alerts,
+    'completion_reminders' =>
+        $settings
+            ->completion_reminders,
 
-                    'product_updates' =>
-                        $settings
-                            ->product_updates,
+    'package_payment_updates' =>
+        $settings
+            ->package_payment_updates,
 
-                    'weekly_report' =>
-                        $settings
-                            ->weekly_report,
-                ],
+    /*
+     * Security alerts are mandatory.
+     */
+    'security_alerts' => true,
+
+    'product_updates' =>
+        $settings
+            ->product_updates,
+
+    'weekly_report' =>
+        $settings
+            ->weekly_report,
+],
 
                 'appearance' => [
                     'theme' =>
@@ -368,78 +383,160 @@ class SettingsController extends Controller
     }
 
     public function updateNotifications(
-        Request $request
-    ): JsonResponse {
-        $validated = $request->validate([
+    Request $request
+): JsonResponse {
+    $user = $request->user();
+
+if (
+    !$this->packageAccessService
+        ->canAccessNotifications($user)
+) {
+    return response()->json(
+        $this->packageAccessService
+            ->upgradeResponse(
+                'Notification settings are available from Gold.',
+                'Gold',
+                [
+                    'feature' =>
+                        'notifications',
+                ]
+            ),
+        403
+    );
+}
+    $validated = $request->validate(
+        [
             'portfolio_views' => [
                 'required',
                 'boolean',
             ],
+
             'resume_downloads' => [
                 'required',
                 'boolean',
             ],
+
             'project_clicks' => [
                 'required',
                 'boolean',
             ],
-            'security_alerts' => [
+
+            'completion_reminders' => [
                 'required',
                 'boolean',
             ],
+
+            'package_payment_updates' => [
+                'required',
+                'boolean',
+            ],
+
             'product_updates' => [
                 'required',
                 'boolean',
             ],
+
             'weekly_report' => [
                 'required',
                 'boolean',
             ],
-        ]);
+        ],
+        [
+            '*.required' =>
+                'All notification preferences are required.',
 
-        $settings =
-            $this->getOrCreateSettings(
-                $request->user()
-            );
+            '*.boolean' =>
+                'Each notification preference must be true or false.',
+        ]
+    );
 
-        $settings->update([
-            'portfolio_views_notification' =>
-                $validated[
-                    'portfolio_views'
-                ],
+    $settings =
+        $this->getOrCreateSettings(
+            $request->user()
+        );
 
-            'resume_downloads_notification' =>
-                $validated[
-                    'resume_downloads'
-                ],
+    $settings->update([
+        'portfolio_views_notification' =>
+            $validated[
+                'portfolio_views'
+            ],
 
-            'project_clicks_notification' =>
-                $validated[
-                    'project_clicks'
-                ],
+        'resume_downloads_notification' =>
+            $validated[
+                'resume_downloads'
+            ],
 
-            'security_alerts' =>
-                $validated[
-                    'security_alerts'
-                ],
+        'project_clicks_notification' =>
+            $validated[
+                'project_clicks'
+            ],
+
+        'completion_reminders' =>
+            $validated[
+                'completion_reminders'
+            ],
+
+        'package_payment_updates' =>
+            $validated[
+                'package_payment_updates'
+            ],
+
+        /*
+         * Users cannot disable important
+         * security notifications.
+         */
+        'security_alerts' => true,
+
+        'product_updates' =>
+            $validated[
+                'product_updates'
+            ],
+
+        'weekly_report' =>
+            $validated[
+                'weekly_report'
+            ],
+    ]);
+
+    return response()->json([
+        'success' => true,
+
+        'message' =>
+            'Notification preferences updated successfully.',
+
+        'data' => [
+            'portfolio_views' =>
+                $settings
+                    ->portfolio_views_notification,
+
+            'resume_downloads' =>
+                $settings
+                    ->resume_downloads_notification,
+
+            'project_clicks' =>
+                $settings
+                    ->project_clicks_notification,
+
+            'completion_reminders' =>
+                $settings
+                    ->completion_reminders,
+
+            'package_payment_updates' =>
+                $settings
+                    ->package_payment_updates,
+
+            'security_alerts' => true,
 
             'product_updates' =>
-                $validated[
-                    'product_updates'
-                ],
+                $settings
+                    ->product_updates,
 
             'weekly_report' =>
-                $validated[
-                    'weekly_report'
-                ],
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' =>
-                'Notification preferences updated.',
-        ]);
-    }
+                $settings
+                    ->weekly_report,
+        ],
+    ]);
+}
 
     public function updateAppearance(
         Request $request
@@ -541,34 +638,50 @@ class SettingsController extends Controller
     }
 
     private function getOrCreateSettings(
-        User $user
-    ): UserSetting {
-        return UserSetting::query()
-            ->firstOrCreate(
-                [
-                    'user_id' => $user->id,
-                ],
-                [
-                    'portfolio_views_notification' =>
-                        true,
-                    'resume_downloads_notification' =>
-                        true,
-                    'project_clicks_notification' =>
-                        true,
-                    'security_alerts' =>
-                        true,
-                    'product_updates' =>
-                        false,
-                    'weekly_report' =>
-                        true,
-                    'theme' => 'light',
-                    'compact_mode' =>
-                        false,
-                    'animations' =>
-                        true,
-                ]
-            );
-    }
+    User $user
+): UserSetting {
+    return UserSetting::query()
+        ->firstOrCreate(
+            [
+                'user_id' =>
+                    $user->id,
+            ],
+            [
+                'portfolio_views_notification' =>
+                    true,
+
+                'resume_downloads_notification' =>
+                    true,
+
+                'project_clicks_notification' =>
+                    true,
+
+                'completion_reminders' =>
+                    true,
+
+                'package_payment_updates' =>
+                    true,
+
+                'security_alerts' =>
+                    true,
+
+                'product_updates' =>
+                    false,
+
+                'weekly_report' =>
+                    true,
+
+                'theme' =>
+                    'light',
+
+                'compact_mode' =>
+                    false,
+
+                'animations' =>
+                    true,
+            ]
+        );
+}
 
     private function nullableString(
         ?string $value

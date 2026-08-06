@@ -47,6 +47,7 @@ use App\Http\Controllers\Api\Admin\AdminProfileController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\Api\UserNotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -1135,6 +1136,60 @@ Route::get(
         'download',
     ]
 );
+
+/*
+|--------------------------------------------------------------------------
+| User Notifications
+|--------------------------------------------------------------------------
+*/
+
+Route::get(
+    '/notifications',
+    [
+        UserNotificationController::class,
+        'index',
+    ]
+);
+
+Route::get(
+    '/notifications/unread-count',
+    [
+        UserNotificationController::class,
+        'unreadCount',
+    ]
+);
+
+Route::patch(
+    '/notifications/read-all',
+    [
+        UserNotificationController::class,
+        'markAllAsRead',
+    ]
+);
+
+Route::delete(
+    '/notifications/clear-read',
+    [
+        UserNotificationController::class,
+        'clearRead',
+    ]
+);
+
+Route::patch(
+    '/notifications/{notification}/read',
+    [
+        UserNotificationController::class,
+        'markAsRead',
+    ]
+)->whereNumber('notification');
+
+Route::delete(
+    '/notifications/{notification}',
+    [
+        UserNotificationController::class,
+        'destroy',
+    ]
+)->whereNumber('notification');
 
 });
 
