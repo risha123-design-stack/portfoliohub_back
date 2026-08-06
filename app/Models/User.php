@@ -8,6 +8,7 @@ use Illuminate\Notifications\Notifiable;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Notifications\ResetPasswordNotification;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -346,4 +347,10 @@ public function processedPayments(): HasMany
         'processed_by'
     );
 }
+public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(
+            new ResetPasswordNotification($token)
+        );
+    }
 }

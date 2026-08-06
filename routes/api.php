@@ -45,6 +45,8 @@ use App\Http\Controllers\Api\Admin\AdminPackageController;
 use App\Http\Controllers\Api\Admin\AdminPaymentController;
 use App\Http\Controllers\Api\Admin\AdminProfileController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\ResetPasswordController;
 
 /*
 |--------------------------------------------------------------------------
@@ -200,6 +202,16 @@ Route::prefix('auth')->group(function () {
         '/verify-otp',
         [AuthController::class, 'verifyOtp']
     )->middleware('throttle:10,1');
+
+    Route::post(
+        '/forgot-password',
+        [ForgotPasswordController::class, 'sendResetLink']
+    )->middleware('throttle:5,1');
+
+    Route::post(
+        '/reset-password',
+        [ResetPasswordController::class, 'reset']
+    )->middleware('throttle:5,1');
 });
 
 

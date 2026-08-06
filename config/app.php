@@ -12,6 +12,7 @@ return [
     | other UI elements where an application name needs to be displayed.
     |
     */
+    
 
     'name' => env('APP_NAME', 'Laravel'),
 
@@ -54,6 +55,10 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'frontend_url' => env(
+    'FRONTEND_URL',
+    'http://localhost:5173'
+),
     /*
     |--------------------------------------------------------------------------
     | Application Timezone
