@@ -25,8 +25,18 @@ RUN apt-get update \
         bcmath \
         gd \
         exif \
-    && a2enmod rewrite headers \
     && rm -rf /var/lib/apt/lists/*
+
+# Keep only one Apache MPM: prefork
+RUN rm -f \
+        /etc/apache2/mods-enabled/mpm_event.load \
+        /etc/apache2/mods-enabled/mpm_event.conf \
+        /etc/apache2/mods-enabled/mpm_worker.load \
+        /etc/apache2/mods-enabled/mpm_worker.conf \
+    && a2enmod mpm_prefork \
+    && a2enmod rewrite \
+    && a2enmod headers \
+    && apache2ctl -M | grep mpm_prefork_module
 
 COPY --from=composer:2 \
     /usr/bin/composer \
@@ -42,16 +52,17 @@ RUN composer install \
     --prefer-dist \
     --optimize-autoloader
 
+# Point Apache to Laravel public directory and port 8080
 RUN sed -ri \
-        -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
+        's!/var/www/html!/var/www/html/public!g' \
         /etc/apache2/sites-available/*.conf \
         /etc/apache2/apache2.conf \
         /etc/apache2/conf-available/*.conf \
     && sed -ri \
-        -e 's/Listen 80/Listen 8080/' \
+        's/Listen 80/Listen 8080/' \
         /etc/apache2/ports.conf \
     && sed -ri \
-        -e 's/<VirtualHost \*:80>/<VirtualHost *:8080>/' \
+        's/<VirtualHost \*:80>/<VirtualHost *:8080>/' \
         /etc/apache2/sites-available/*.conf
 
 RUN mkdir -p \

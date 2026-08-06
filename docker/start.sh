@@ -27,8 +27,12 @@ echo "Caching Laravel configuration..."
 php artisan config:cache
 php artisan view:cache
 
-php artisan storage:link || true
+if [ ! -L public/storage ]; then
+    php artisan storage:link
+fi
+
+echo "Checking Apache configuration..."
+apache2ctl configtest
 
 echo "Starting Apache on port 8080..."
-
 exec apache2-foreground
