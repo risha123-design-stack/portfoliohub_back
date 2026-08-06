@@ -28,11 +28,13 @@ php artisan config:cache
 php artisan view:cache
 
 if [ ! -L public/storage ]; then
-    php artisan storage:link
+    php artisan storage:link || true
 fi
 
-echo "Checking Apache configuration..."
-apache2ctl configtest
+APP_PORT="${PORT:-8080}"
 
-echo "Starting Apache on port 8080..."
-exec apache2-foreground
+echo "Starting Laravel server on port ${APP_PORT}..."
+
+exec php artisan serve \
+    --host=0.0.0.0 \
+    --port="${APP_PORT}"
