@@ -17,9 +17,104 @@ class PortfolioPreviewResource extends JsonResource
             $this->contactInformation
         );
 
-        $primaryResume = $this->resumes
-            ->firstWhere('is_primary', true)
-            ?? $this->resumes->first();
+        $isSilverPackage = strcasecmp(
+            (string) ($this->package_name ?? ''),
+            'Silver'
+        ) === 0;
+        $profileLanguages = collect(
+    $profile?->languages ?? []
+)
+    ->filter(
+        fn ($language) =>
+            trim((string) $language) !== ''
+    )
+    ->values();
+
+$profileSocialLinks = collect([
+    [
+        'platform' => 'GitHub',
+        'label' => 'GitHub',
+        'url' => $this->externalUrl(
+            $profile?->github
+        ),
+    ],
+    [
+        'platform' => 'LinkedIn',
+        'label' => 'LinkedIn',
+        'url' => $this->externalUrl(
+            $profile?->linkedin
+        ),
+    ],
+    [
+        'platform' => 'Facebook',
+        'label' => 'Facebook',
+        'url' => $this->externalUrl(
+            $profile?->facebook
+        ),
+    ],
+    [
+        'platform' => 'Instagram',
+        'label' => 'Instagram',
+        'url' => $this->externalUrl(
+            $profile?->instagram
+        ),
+    ],
+    [
+        'platform' => 'Twitter',
+        'label' => 'Twitter',
+        'url' => $this->externalUrl(
+            $profile?->twitter
+        ),
+    ],
+    [
+        'platform' => 'YouTube',
+        'label' => 'YouTube',
+        'url' => $this->externalUrl(
+            $profile?->youtube
+        ),
+    ],
+    [
+        'platform' => 'Behance',
+        'label' => 'Behance',
+        'url' => $this->externalUrl(
+            $profile?->behance
+        ),
+    ],
+    [
+        'platform' => 'Dribbble',
+        'label' => 'Dribbble',
+        'url' => $this->externalUrl(
+            $profile?->dribbble
+        ),
+    ],
+    [
+        'platform' => 'Portfolio',
+        'label' => 'Portfolio',
+        'url' => $this->externalUrl(
+            $profile?->portfolio_link
+        ),
+    ],
+])
+    ->filter(
+        fn ($link) =>
+            !empty($link['url'])
+    )
+    ->values();
+
+$profileResumeUrl =
+    $profile?->show_resume
+        ? $this->fileUrl(
+            $profile?->resume
+        )
+        : null;
+
+        $primaryResume = $isSilverPackage
+            ? null
+            : (
+                $this->resumes
+                    ->firstWhere('is_primary', true)
+                ?? $this->resumes->first()
+            );
 
         return [
             'user' => [
@@ -45,6 +140,110 @@ class PortfolioPreviewResource extends JsonResource
             'profile' => [
                 'fullName' =>
                     $this->getDisplayName($profile),
+
+                'firstName' =>
+                    $this->cleanString(
+                        $profile?->first_name
+                    ),
+
+                'lastName' =>
+                    $this->cleanString(
+                        $profile?->last_name
+                    ),
+
+                'displayName' =>
+                    $this->cleanString(
+                        $profile?->display_name
+                    ),
+
+                'dateOfBirth' =>
+                    $this->formatDate(
+                        $profile?->date_of_birth
+                    ),
+
+                'gender' =>
+                    $this->cleanString(
+                        $profile?->gender
+                    ),
+
+                'nationality' =>
+                    $this->cleanString(
+                        $profile?->nationality
+                    ),
+
+                'specialization' =>
+                    $this->cleanString(
+                        $profile?->specialization
+                    ),
+
+                'currentPosition' =>
+                    $this->cleanString(
+                        $profile?->current_position
+                    ),
+
+                'company' =>
+                    $this->cleanString(
+                        $profile?->company
+                    ),
+
+                'experienceYears' =>
+                    $profile?->experience_years,
+
+                'website' =>
+                    $this->externalUrl(
+                        $profile?->website
+                    )
+                    ?: $this->externalUrl(
+                        $profile?->portfolio_link
+                    ),
+
+                'coverImage' =>
+                    $this->fileUrl(
+                        $profile?->cover_image
+                    ),
+                    'profileLanguages' =>
+    $profileLanguages->toArray(),
+
+'profileSocialLinks' =>
+    $profile?->show_social_links
+        ? $profileSocialLinks->toArray()
+        : [],
+
+'profileResume' =>
+    $profileResumeUrl
+        ? [
+            'id' => null,
+
+            'title' =>
+                'My Resume',
+
+            'description' =>
+                'Professional resume',
+
+            'resumeUrl' =>
+                $profileResumeUrl,
+
+            'originalFileName' =>
+                basename(
+                    (string) $profile?->resume
+                ),
+
+            'version' =>
+                'Profile',
+
+            'visibility' =>
+                'public',
+
+            'isPrimary' =>
+                true,
+
+            'downloads' =>
+                0,
+
+            'source' =>
+                'profile',
+        ]
+        : null,
 
                 'profession' =>
                     $this->cleanString(
@@ -135,10 +334,11 @@ class PortfolioPreviewResource extends JsonResource
                         ?? $this->profile_photo
                     ),
 
-                'resumeUrl' =>
-                    $this->fileUrl(
-                        $primaryResume?->resume_url
-                    ),
+               'resumeUrl' =>
+    $this->fileUrl(
+        $primaryResume?->resume_url
+    )
+    ?: $profileResumeUrl,
             ],
 
             'about' => $about
@@ -448,7 +648,9 @@ class PortfolioPreviewResource extends JsonResource
                 )
                 ->values(),
 
-            'languages' => $this->languages
+            'languages' => ($isSilverPackage
+                ? collect()
+                : $this->languages)
                 ->sortBy('display_order')
                 ->values()
                 ->map(function ($item) {
@@ -486,7 +688,9 @@ class PortfolioPreviewResource extends JsonResource
                 )
                 ->values(),
 
-            'resumes' => $this->resumes
+            'resumes' => ($isSilverPackage
+                ? collect()
+                : $this->resumes)
                 ->map(function ($resume) {
                     return [
                         'id' => $resume->id,
@@ -534,7 +738,9 @@ class PortfolioPreviewResource extends JsonResource
                 )
                 ->values(),
 
-            'social_links' => $this->socialLinks
+            'social_links' => ($isSilverPackage
+                ? collect()
+                : $this->socialLinks)
                 ->where('is_visible', true)
                 ->sortBy('display_order')
                 ->values()
@@ -576,9 +782,12 @@ class PortfolioPreviewResource extends JsonResource
                 'education' => true,
                 'certificates' => true,
                 'achievements' => true,
-                'languages' => true,
-                'resume' => true,
-                'socialLinks' => true,
+                // These standalone modules are locked for Silver.
+                // Profile-level language/resume/social data is still exposed
+                // separately above and the template renders it as a fallback.
+                'languages' => !$isSilverPackage,
+                'resume' => !$isSilverPackage,
+                'socialLinks' => !$isSilverPackage,
                 'contact' => true,
             ],
 
